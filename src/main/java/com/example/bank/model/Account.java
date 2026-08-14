@@ -36,8 +36,10 @@ public abstract class Account {
         this.accountHolderName = firstName + " " + lastName;
         this.balance = initialBalance;
         this.transactionHistory = new ArrayList<>();
-        // Record initial balance as first transaction
-        addTransaction("Initial deposit: $" + initialBalance);
+    }
+
+    public void setTransactionHistory(List<String> history) {
+        this.transactionHistory = new ArrayList<>(history);
     }
 
     // Getters and Setters (Encapsulation)
