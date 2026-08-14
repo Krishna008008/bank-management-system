@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Log4j2 Configuration for Bank Management System.
+  Logs to both the console (terminal) and a rolling file (logs/bank_activity.log).
+-->
+<Configuration status="WARN">
+
+    <!-- Define where logs go -->
+    <Appenders>
+
+        <!-- 1. Console: prints to terminal (same as System.out) -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%level] %logger{1} - %msg%n"/>
+        </Console>
+
+        <!-- 2. Rolling File: saves to logs/bank_activity.log -->
+        <!--    Rolls over when file reaches 10 MB, keeps last 5 backups -->
+        <RollingFile name="FileLog"
+                     fileName="logs/bank_activity.log"
+                     filePattern="logs/bank_activity-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%level] %logger{1} - %msg%n"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="5"/>
+        </RollingFile>
+
+    </Appenders>
+
+    <!-- Define what gets logged -->
+    <Loggers>
+        <!-- Our application logs at INFO level and above -->
+        <Logger name="com.example.bank" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileLog"/>
+        </Logger>
+
+        <!-- Default: only log warnings from third-party libraries -->
+        <Root level="WARN">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+
+</Configuration>

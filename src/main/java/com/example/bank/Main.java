@@ -7,8 +7,11 @@ import com.example.bank.exception.AccountNotFoundException;
 import com.example.bank.exception.InsufficientFundsException;
 import java.util.Random;
 import java.util.Scanner;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class Main {
+    private static final Logger logger = LogManager.getLogger(Main.class);
     private static final Random random = new Random();
 
     public static void main(String[] args) {

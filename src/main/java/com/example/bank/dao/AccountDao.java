@@ -5,6 +5,8 @@ import com.example.bank.exception.InsufficientFundsException;
 import com.example.bank.model.Account;
 import com.example.bank.model.CurrentAccount;
 import com.example.bank.model.SavingsAccount;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -17,21 +19,17 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * AccountDao (Data Access Object) handles all database operations (CRUD)
- * for Accounts and Transactions in the SQLite database.
+ * AccountDao handles all database operations (CRUD) with audit logging.
  */
 public class AccountDao {
+    private static final Logger logger = LogManager.getLogger(AccountDao.class);
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public AccountDao() {
-        // Ensure database tables exist upon DAO creation
         DatabaseManager.initializeDatabase();
     }
 
-    /**
-     * Saves a new account and its initial deposit record into SQLite.
-     */
     public void saveAccount(Account account, String accountType) {
         String insertAccountSql = """
             INSERT INTO accounts (account_number, first_name, last_name, phone_number, password_hash, balance, account_type)
@@ -44,12 +42,11 @@ public class AccountDao {
         """;
 
         try (Connection conn = DatabaseManager.getConnection()) {
-            conn.setAutoCommit(false); // Start database transaction
+            conn.setAutoCommit(false);
 
             try (PreparedStatement stmtAcc = conn.prepareStatement(insertAccountSql);
                  PreparedStatement stmtTx = conn.prepareStatement(insertTxSql)) {
 
-                // 1. Insert account record
                 stmtAcc.setString(1, account.getAccountNumber());
                 stmtAcc.setString(2, account.getFirstName());
                 stmtAcc.setString(3, account.getLastName());
@@ -59,7 +56,6 @@ public class AccountDao {
                 stmtAcc.setString(7, accountType);
                 stmtAcc.executeUpdate();
 
-                // 2. Insert initial deposit transaction
                 String timestamp = LocalDateTime.now().format(DATE_TIME_FORMATTER);
                 stmtTx.setString(1, account.getAccountNumber());
                 stmtTx.setString(2, "INITIAL_DEPOSIT");
@@ -69,9 +65,12 @@ public class AccountDao {
                 stmtTx.setString(6, "Initial deposit: $" + account.getBalance());
                 stmtTx.executeUpdate();
 
-                conn.commit(); // Commit both operations
+                conn.commit();
+                logger.info("Account {} successfully created and saved in DB (Type: {}, Balance: ${})",
+                        account.getAccountNumber(), accountType, account.getBalance());
             } catch (SQLException e) {
-                conn.rollback(); // Rollback if any error occurs
+                conn.rollback();
+                logger.error("Failed to save account {}, rolled back: {}", account.getAccountNumber(), e.getMessage());
                 throw e;
             }
         } catch (SQLException e) {
@@ -79,9 +78,6 @@ public class AccountDao {
         }
     }
 
-    /**
-     * Finds an account by its account number.
-     */
     public Account findByAccountNumber(String accountNumber) throws AccountNotFoundException {
         String sql = "SELECT * FROM accounts WHERE account_number = ?;";
 
@@ -93,17 +89,16 @@ public class AccountDao {
                 if (rs.next()) {
                     return mapRowToAccount(rs, conn);
                 } else {
+                    logger.warn("Lookup failed: Account {} not found", accountNumber);
                     throw new AccountNotFoundException("Account not found with account number: " + accountNumber);
                 }
             }
         } catch (SQLException e) {
+            logger.error("DB error finding account {}: {}", accountNumber, e.getMessage());
             throw new RuntimeException("Database error finding account: " + e.getMessage(), e);
         }
     }
 
-    /**
-     * Finds an account by its registered phone number.
-     */
     public Account findByPhoneNumber(String phoneNumber) throws AccountNotFoundException {
         String sql = "SELECT * FROM accounts WHERE phone_number = ?;";
 
@@ -115,17 +110,16 @@ public class AccountDao {
                 if (rs.next()) {
                     return mapRowToAccount(rs, conn);
                 } else {
+                    logger.warn("Lookup failed: No account for phone {}", phoneNumber);
                     throw new AccountNotFoundException("No account found associated with phone number: " + phoneNumber);
                 }
             }
         } catch (SQLException e) {
+            logger.error("DB error finding phone {}: {}", phoneNumber, e.getMessage());
             throw new RuntimeException("Database error finding account by phone: " + e.getMessage(), e);
         }
     }
 
-    /**
-     * Deposits an amount into an account and records the transaction.
-     */
     public void deposit(String accountNumber, double amount) throws AccountNotFoundException {
         if (amount <= 0) {
             throw new IllegalArgumentException("Deposit amount must be positive.");
@@ -155,14 +149,12 @@ public class AccountDao {
 
                 double newBalance = currentBalance + amount;
 
-                // Update account balance
                 try (PreparedStatement stmtUpdate = conn.prepareStatement(updateSql)) {
                     stmtUpdate.setDouble(1, amount);
                     stmtUpdate.setString(2, accountNumber);
                     stmtUpdate.executeUpdate();
                 }
 
-                // Record transaction
                 String timestamp = LocalDateTime.now().format(DATE_TIME_FORMATTER);
                 try (PreparedStatement stmtTx = conn.prepareStatement(txSql)) {
                     stmtTx.setString(1, accountNumber);
@@ -175,8 +167,10 @@ public class AccountDao {
                 }
 
                 conn.commit();
+                logger.info("Deposit of ${} to account {} successful. New balance: ${}", amount, accountNumber, newBalance);
             } catch (Exception e) {
                 conn.rollback();
+                logger.error("Deposit to {} failed, rolled back: {}", accountNumber, e.getMessage());
                 if (e instanceof AccountNotFoundException) throw (AccountNotFoundException) e;
                 throw new RuntimeException("Deposit transaction failed: " + e.getMessage(), e);
             }
@@ -185,9 +179,6 @@ public class AccountDao {
         }
     }
 
-    /**
-     * Withdraws an amount from an account and records the transaction.
-     */
     public void withdraw(String accountNumber, double amount)
             throws AccountNotFoundException, InsufficientFundsException {
         if (amount <= 0) {
@@ -221,26 +212,27 @@ public class AccountDao {
 
                 double newBalance = currentBalance - amount;
 
-                // Enforce account balance rules
                 if (accountType.equalsIgnoreCase("Savings")) {
                     if (newBalance < SavingsAccount.MINIMUM_BALANCE) {
+                        logger.warn("Withdrawal rejected for Savings Account {}: Balance would drop to ${} (Min: ${})",
+                                accountNumber, newBalance, SavingsAccount.MINIMUM_BALANCE);
                         throw new InsufficientFundsException("Withdrawal failed. Minimum balance of $" +
                                 SavingsAccount.MINIMUM_BALANCE + " must be maintained.");
                     }
                 } else {
                     if (newBalance < 0) {
+                        logger.warn("Withdrawal rejected for Current Account {}: Insufficient funds for amount ${}",
+                                accountNumber, amount);
                         throw new InsufficientFundsException("Withdrawal failed. Insufficient funds.");
                     }
                 }
 
-                // Update account balance
                 try (PreparedStatement stmtUpdate = conn.prepareStatement(updateSql)) {
                     stmtUpdate.setDouble(1, amount);
                     stmtUpdate.setString(2, accountNumber);
                     stmtUpdate.executeUpdate();
                 }
 
-                // Record transaction
                 String timestamp = LocalDateTime.now().format(DATE_TIME_FORMATTER);
                 try (PreparedStatement stmtTx = conn.prepareStatement(txSql)) {
                     stmtTx.setString(1, accountNumber);
@@ -253,8 +245,10 @@ public class AccountDao {
                 }
 
                 conn.commit();
+                logger.info("Withdrawal of ${} from account {} successful. New balance: ${}", amount, accountNumber, newBalance);
             } catch (Exception e) {
                 conn.rollback();
+                logger.error("Withdrawal from {} failed, rolled back: {}", accountNumber, e.getMessage());
                 if (e instanceof AccountNotFoundException) throw (AccountNotFoundException) e;
                 if (e instanceof InsufficientFundsException) throw (InsufficientFundsException) e;
                 throw new RuntimeException("Withdrawal transaction failed: " + e.getMessage(), e);
@@ -264,9 +258,6 @@ public class AccountDao {
         }
     }
 
-    /**
-     * Atomically transfers money from source account to destination account (ACID transaction).
-     */
     public void transfer(String sourceAccountNumber, String destinationAccountNumber, double amount)
             throws AccountNotFoundException, InsufficientFundsException {
         if (sourceAccountNumber.equals(destinationAccountNumber)) {
@@ -286,9 +277,8 @@ public class AccountDao {
         """;
 
         try (Connection conn = DatabaseManager.getConnection()) {
-            conn.setAutoCommit(false); // Atomic transaction
+            conn.setAutoCommit(false);
             try {
-                // 1. Verify source account
                 double srcBalance;
                 String srcType;
                 try (PreparedStatement stmtSrc = conn.prepareStatement(selectSourceSql)) {
@@ -303,16 +293,16 @@ public class AccountDao {
                     }
                 }
 
-                // 2. Check sufficient funds
                 double srcNewBalance = srcBalance - amount;
                 if (srcType.equalsIgnoreCase("Savings") && srcNewBalance < SavingsAccount.MINIMUM_BALANCE) {
+                    logger.warn("Transfer rejected from {}: Minimum balance violation", sourceAccountNumber);
                     throw new InsufficientFundsException("Insufficient funds. Minimum balance of $" +
                             SavingsAccount.MINIMUM_BALANCE + " must be maintained.");
                 } else if (srcNewBalance < 0) {
+                    logger.warn("Transfer rejected from {}: Insufficient funds", sourceAccountNumber);
                     throw new InsufficientFundsException("Insufficient funds in account " + sourceAccountNumber);
                 }
 
-                // 3. Verify destination account
                 double destBalance;
                 try (PreparedStatement stmtDest = conn.prepareStatement(selectDestSql)) {
                     stmtDest.setString(1, destinationAccountNumber);
@@ -326,21 +316,18 @@ public class AccountDao {
                 }
                 double destNewBalance = destBalance + amount;
 
-                // 4. Deduct from source
                 try (PreparedStatement stmtDeduct = conn.prepareStatement(deductSql)) {
                     stmtDeduct.setDouble(1, amount);
                     stmtDeduct.setString(2, sourceAccountNumber);
                     stmtDeduct.executeUpdate();
                 }
 
-                // 5. Add to destination
                 try (PreparedStatement stmtAdd = conn.prepareStatement(addSql)) {
                     stmtAdd.setDouble(1, amount);
                     stmtAdd.setString(2, destinationAccountNumber);
                     stmtAdd.executeUpdate();
                 }
 
-                // 6. Record source transaction
                 String timestamp = LocalDateTime.now().format(DATE_TIME_FORMATTER);
                 try (PreparedStatement stmtTx = conn.prepareStatement(txSql)) {
                     stmtTx.setString(1, sourceAccountNumber);
@@ -351,7 +338,6 @@ public class AccountDao {
                     stmtTx.setString(6, "Transfer to " + destinationAccountNumber + ": -$" + amount);
                     stmtTx.executeUpdate();
 
-                    // 7. Record destination transaction
                     stmtTx.setString(1, destinationAccountNumber);
                     stmtTx.setString(2, "TRANSFER_IN");
                     stmtTx.setDouble(3, amount);
@@ -361,9 +347,13 @@ public class AccountDao {
                     stmtTx.executeUpdate();
                 }
 
-                conn.commit(); // Commit all changes together
+                conn.commit();
+                logger.info("Transfer of ${} from {} to {} completed successfully.",
+                        amount, sourceAccountNumber, destinationAccountNumber);
             } catch (Exception e) {
-                conn.rollback(); // Rollback if anything fails
+                conn.rollback();
+                logger.error("Transfer from {} to {} failed, rolled back: {}",
+                        sourceAccountNumber, destinationAccountNumber, e.getMessage());
                 if (e instanceof AccountNotFoundException) throw (AccountNotFoundException) e;
                 if (e instanceof InsufficientFundsException) throw (InsufficientFundsException) e;
                 if (e instanceof IllegalArgumentException) throw (IllegalArgumentException) e;
@@ -374,9 +364,6 @@ public class AccountDao {
         }
     }
 
-    /**
-     * Maps a database ResultSet row to an Account object and loads its recent transactions.
-     */
     private Account mapRowToAccount(ResultSet rs, Connection conn) throws SQLException {
         String accNum = rs.getString("account_number");
         String firstName = rs.getString("first_name");
@@ -393,7 +380,6 @@ public class AccountDao {
             account = new CurrentAccount(accNum, firstName, lastName, phone, password, balance);
         }
 
-        // Load last 5 transactions for mini-statement
         String txSql = "SELECT description, timestamp FROM transactions WHERE account_number = ? ORDER BY id DESC LIMIT 5;";
         List<String> transactions = new ArrayList<>();
         try (PreparedStatement stmt = conn.prepareStatement(txSql)) {
@@ -406,7 +392,6 @@ public class AccountDao {
                 }
             }
         }
-        // Reverse so that oldest is first in list (printMiniStatement prints newest on top)
         Collections.reverse(transactions);
         account.setTransactionHistory(transactions);
 
