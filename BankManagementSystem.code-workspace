@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../../../../projects/core-java-programs"
+		},
+		{
+			"path": "../../../../projects/Web-technologies"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "Web-technologies"
+	}
+}
