@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Core Bank Management System - Secure online banking portal">
+    <title>Apex Bank - Online Banking Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <div class="brand-icon">🏛️</div>
+                <div class="brand-text">
+                    <span class="brand-name">Apex Bank</span>
+                    <span class="brand-tag">Core System</span>
+                </div>
+            </div>
+            <div class="nav-status">
+                <span class="status-indicator online"></span>
+                <span class="status-label">API Connected</span>
+            </div>
+            <div id="navUserSection" class="nav-user hidden">
+                <span id="navUserName" class="user-name">User</span>
+                <button id="btnLogout" class="btn btn-secondary btn-sm">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Toast Container -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- AUTH SECTION (Login / Sign Up) -->
+        <section id="authSection" class="auth-section">
+            <div class="auth-card">
+                <div class="auth-tabs">
+                    <button id="tabLogin" class="tab-btn active" onclick="switchAuthTab('login')">Login</button>
+                    <button id="tabSignup" class="tab-btn" onclick="switchAuthTab('signup')">Open Account</button>
+                </div>
+
+                <!-- LOGIN FORM -->
+                <form id="loginForm" class="auth-form" onsubmit="handleLogin(event)">
+                    <div class="form-header">
+                        <h2>Welcome Back</h2>
+                        <p>Access your banking portal securely</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="loginPhone">10-Digit Phone Number</label>
+                        <input type="tel" id="loginPhone" placeholder="e.g. 9876543210" pattern="[0-9]{10}" maxlength="10" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="loginPin">4-Digit PIN</label>
+                        <input type="password" id="loginPin" placeholder="••••" pattern="[0-9]{4}" maxlength="4" required>
+                    </div>
+
+                    <button type="submit" id="btnLoginSubmit" class="btn btn-primary btn-block">
+                        <span>Secure Login</span>
+                    </button>
+                </form>
+
+                <!-- SIGN UP FORM -->
+                <form id="signupForm" class="auth-form hidden" onsubmit="handleSignup(event)">
+                    <div class="form-header">
+                        <h2>Open a New Account</h2>
+                        <p>Join Apex Bank in minutes</p>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="signupFirstName">First Name</label>
+                            <input type="text" id="signupFirstName" placeholder="John" pattern="[a-zA-Z]+" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="signupLastName">Last Name</label>
+                            <input type="text" id="signupLastName" placeholder="Doe" pattern="[a-zA-Z]+" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="signupPhone">Phone Number</label>
+                        <input type="tel" id="signupPhone" placeholder="10-digit number" pattern="[0-9]{10}" maxlength="10" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="signupPin">Create 4-Digit PIN</label>
+                            <input type="password" id="signupPin" placeholder="••••" pattern="[0-9]{4}" maxlength="4" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="signupConfirmPin">Confirm PIN</label>
+                            <input type="password" id="signupConfirmPin" placeholder="••••" pattern="[0-9]{4}" maxlength="4" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="signupAccountType">Account Type</label>
+                            <select id="signupAccountType" required onchange="handleAccountTypeChange()">
+                                <option value="Savings">Savings Account (Min $100)</option>
+                                <option value="Current">Current Account ($0 min)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="signupInitialDeposit">Initial Deposit ($)</label>
+                            <input type="number" id="signupInitialDeposit" placeholder="100.00" min="100" step="0.01" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btnSignupSubmit" class="btn btn-primary btn-block">
+                        <span>Create Account</span>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- DASHBOARD SECTION (Post-Login) -->
+        <section id="dashboardSection" class="dashboard-section hidden">
+            <!-- Account Summary Card -->
+            <div class="balance-card">
+                <div class="card-top">
+                    <div>
+                        <span class="card-label">Apex Banking Account</span>
+                        <h2 id="dashHolderName" class="holder-name">Account Holder</h2>
+                    </div>
+                    <div class="account-badge">
+                        <span id="dashAccountType">Savings</span>
+                    </div>
+                </div>
+
+                <div class="card-middle">
+                    <span class="balance-label">Available Balance</span>
+                    <div class="balance-value">
+                        <span class="currency">$</span>
+                        <span id="dashBalance">0.00</span>
+                    </div>
+                </div>
+
+                <div class="card-bottom">
+                    <div class="meta-item">
+                        <span class="meta-label">Account Number</span>
+                        <span id="dashAccountNumber" class="meta-value font-mono">AC----------</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Registered Phone</span>
+                        <span id="dashPhoneNumber" class="meta-value font-mono">----------</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Operations Grid -->
+            <div class="actions-grid">
+                <!-- Deposit Card -->
+                <div class="action-card">
+                    <div class="card-heading">
+                        <div class="icon-bubble deposit-bubble">↓</div>
+                        <div>
+                            <h3>Deposit Funds</h3>
+                            <p>Add money to this account</p>
+                        </div>
+                    </div>
+                    <form id="depositForm" onsubmit="handleDeposit(event)">
+                        <div class="form-group">
+                            <label for="depAmount">Deposit Amount ($)</label>
+                            <input type="number" id="depAmount" min="0.01" step="0.01" placeholder="0.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="depPin">Verify 4-Digit PIN</label>
+                            <input type="password" id="depPin" maxlength="4" placeholder="••••" required>
+                        </div>
+                        <button type="submit" class="btn btn-action btn-deposit">Deposit Money</button>
+                    </form>
+                </div>
+
+                <!-- Withdraw Card -->
+                <div class="action-card">
+                    <div class="card-heading">
+                        <div class="icon-bubble withdraw-bubble">↑</div>
+                        <div>
+                            <h3>Withdraw Cash</h3>
+                            <p>Deduct funds safely</p>
+                        </div>
+                    </div>
+                    <form id="withdrawForm" onsubmit="handleWithdraw(event)">
+                        <div class="form-group">
+                            <label for="withAmount">Withdraw Amount ($)</label>
+                            <input type="number" id="withAmount" min="0.01" step="0.01" placeholder="0.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="withPin">Verify 4-Digit PIN</label>
+                            <input type="password" id="withPin" maxlength="4" placeholder="••••" required>
+                        </div>
+                        <button type="submit" class="btn btn-action btn-withdraw">Withdraw Money</button>
+                    </form>
+                </div>
+
+                <!-- Transfer Card -->
+                <div class="action-card">
+                    <div class="card-heading">
+                        <div class="icon-bubble transfer-bubble">⇄</div>
+                        <div>
+                            <h3>Atomic Transfer</h3>
+                            <p>Instant failure-proof send</p>
+                        </div>
+                    </div>
+                    <form id="transferForm" onsubmit="handleTransfer(event)">
+                        <div class="form-group">
+                            <label for="destAccount">Destination Account #</label>
+                            <input type="text" id="destAccount" placeholder="e.g. AC9876543210" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="transferAmount">Transfer Amount ($)</label>
+                            <input type="number" id="transferAmount" min="0.01" step="0.01" placeholder="0.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="transferPin">Verify 4-Digit PIN</label>
+                            <input type="password" id="transferPin" maxlength="4" placeholder="••••" required>
+                        </div>
+                        <button type="submit" class="btn btn-action btn-transfer">Send Transfer</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>Apex Bank Core Management System &bull; Java 17 + SQLite Backend &bull; Log4j2 Audit Logged</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -51,20 +51,15 @@ mvn test
 mvn clean package
 ```
 
-### 3. Run Console Application
-```powershell
-java -jar target/bank-management-1.0.0-jar-with-dependencies.jar
-```
-
-### 4. Run REST API Server
+### 3. Run Web Portal & REST API Server (Recommended)
 ```powershell
 java -cp target/bank-management-1.0.0-jar-with-dependencies.jar com.example.bank.api.BankServer
 ```
-REST API will be live on `http://localhost:8080/api` with endpoints:
-- `POST /api/accounts` (Sign up)
-- `POST /api/auth/login` (Authentication)
-- `GET /api/accounts/{id}` (Account Details)
-- `POST /api/transactions/deposit` (Deposit)
-- `POST /api/transactions/withdraw` (Withdraw)
-- `POST /api/transactions/transfer` (Atomic Transfer)
+- 🌐 **Web Banking UI**: Open `http://localhost:8080/` in your web browser.
+- 📡 **REST API Base**: `http://localhost:8080/api`
+
+### 4. Run Interactive Console (Terminal Mode)
+```powershell
+java -jar target/bank-management-1.0.0-jar-with-dependencies.jar
+```
 
