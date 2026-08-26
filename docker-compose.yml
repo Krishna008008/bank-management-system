@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  bank-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: apex-bank-management
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - PORT=8080

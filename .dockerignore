@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+
+# Maven & Build artifacts
+target/
+*.jar
+*.class
+
+# Databases & local data
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# Logs
+logs/
+*.log
+
+# IDE & OS files
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+.DS_Store
+Thumbs.db

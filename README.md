@@ -51,14 +51,24 @@ mvn test
 mvn clean package
 ```
 
-### 3. Run Web Portal & REST API Server (Recommended)
+### 3. Run Web Portal & REST API Server (Locally)
 ```powershell
 java -cp target/bank-management-1.0.0-jar-with-dependencies.jar com.example.bank.api.BankServer
 ```
 - 🌐 **Web Banking UI**: Open `http://localhost:8080/` in your web browser.
 - 📡 **REST API Base**: `http://localhost:8080/api`
 
-### 4. Run Interactive Console (Terminal Mode)
+### 4. Run with Docker (Recommended for Deployment)
+Build and run the entire application container with zero host dependencies:
+```bash
+docker compose up --build -d
+```
+Stop container:
+```bash
+docker compose down
+```
+
+### 5. Run Interactive Console (Terminal Mode)
 ```powershell
 java -jar target/bank-management-1.0.0-jar-with-dependencies.jar
 ```
