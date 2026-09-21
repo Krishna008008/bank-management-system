@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Core Bank Management System - Secure online banking portal">
-    <title>Apex Bank - Online Banking Portal</title>
+    <title>Bank - Online Banking Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -17,7 +17,7 @@
             <div class="brand">
                 <div class="brand-icon">🏛️</div>
                 <div class="brand-text">
-                    <span class="brand-name">Apex Bank</span>
+                    <span class="brand-name">Bank</span>
                     <span class="brand-tag">Core System</span>
                 </div>
             </div>
@@ -70,7 +70,7 @@
                 <form id="signupForm" class="auth-form hidden" onsubmit="handleSignup(event)">
                     <div class="form-header">
                         <h2>Open a New Account</h2>
-                        <p>Join Apex Bank in minutes</p>
+                        <p>Join Bank in minutes</p>
                     </div>
 
                     <div class="form-row">
@@ -127,7 +127,7 @@
             <div class="balance-card">
                 <div class="card-top">
                     <div>
-                        <span class="card-label">Apex Banking Account</span>
+                        <span class="card-label">Banking Account</span>
                         <h2 id="dashHolderName" class="holder-name">Account Holder</h2>
                     </div>
                     <div class="account-badge">
@@ -227,11 +227,41 @@
                     </form>
                 </div>
             </div>
+
+            <!-- Transaction History / Mini-Statement Table -->
+            <div class="statement-card">
+                <div class="statement-header">
+                    <div class="statement-title">
+                        <div class="icon-bubble statement-bubble">📜</div>
+                        <div>
+                            <h3>Recent Transactions (Mini-Statement)</h3>
+                            <p>Live transaction ledger from SQLite database</p>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="refreshStatement()">↻ Refresh</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="statement-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Description / Activity</th>
+                                <th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statementTableBody">
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">Loading transactions...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </section>
     </main>
 
     <footer class="footer">
-        <p>Apex Bank Core Management System &bull; Java 17 + SQLite Backend &bull; Log4j2 Audit Logged</p>
+        <p>Bank Core Management System &bull; Java 17 + SQLite Backend &bull; Log4j2 Audit Logged</p>
     </footer>
 
     <script src="app.js"></script>

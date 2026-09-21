@@ -153,7 +153,7 @@ public class BankApiController implements HttpHandler {
             resp.put("success", true);
             resp.put("accountNumber", account.getAccountNumber());
             resp.put("balance", account.getBalance());
-            // Statement records are mapped in memory by AccountDao
+            resp.put("transactions", account.getTransactionHistory());
             sendJsonResponse(exchange, 200, resp);
         } catch (AccountNotFoundException e) {
             sendError(exchange, 404, e.getMessage());

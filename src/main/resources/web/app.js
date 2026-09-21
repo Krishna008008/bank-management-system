@@ -1,5 +1,5 @@
 /**
- * Apex Bank Frontend Application Logic
+ * Bank Frontend Application Logic
  */
 
 const API_BASE = '/api';
@@ -7,15 +7,15 @@ let currentUser = null;
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
-    // Check for saved session
-    const saved = sessionStorage.getItem('apex_user');
+    const saved = sessionStorage.getItem('bank_user');
     if (saved) {
         try {
             currentUser = JSON.parse(saved);
             showDashboard();
             refreshAccountDetails();
+            refreshStatement();
         } catch (e) {
-            sessionStorage.removeItem('apex_user');
+            sessionStorage.removeItem('bank_user');
         }
     }
 
@@ -74,9 +74,10 @@ async function handleLogin(e) {
         const data = await res.json();
         if (res.ok && data.success) {
             currentUser = data;
-            sessionStorage.setItem('apex_user', JSON.stringify(currentUser));
+            sessionStorage.setItem('bank_user', JSON.stringify(currentUser));
             showToast('Login successful! Welcome back.', 'success');
             showDashboard();
+            refreshStatement();
         } else {
             showToast(data.error || 'Invalid credentials', 'error');
         }
@@ -124,9 +125,10 @@ async function handleSignup(e) {
         const data = await res.json();
         if (res.ok && data.success) {
             currentUser = data;
-            sessionStorage.setItem('apex_user', JSON.stringify(currentUser));
+            sessionStorage.setItem('bank_user', JSON.stringify(currentUser));
             showToast(`Account ${data.accountNumber} created successfully!`, 'success');
             showDashboard();
+            refreshStatement();
         } else {
             showToast(data.error || 'Account creation failed', 'error');
         }
@@ -140,14 +142,14 @@ async function handleSignup(e) {
 
 function handleLogout() {
     currentUser = null;
-    sessionStorage.removeItem('apex_user');
+    sessionStorage.removeItem('bank_user');
     document.getElementById('loginForm').reset();
     document.getElementById('signupForm').reset();
     showAuth();
     showToast('Logged out securely', 'success');
 }
 
-// ==================== DASHBOARD & API TRANSACTIONS ====================
+// ==================== DASHBOARD & TRANSACTIONS ====================
 function showDashboard() {
     document.getElementById('authSection').classList.add('hidden');
     document.getElementById('dashboardSection').classList.remove('hidden');
@@ -177,9 +179,50 @@ async function refreshAccountDetails() {
             currentUser.balance = data.balance;
             currentUser.accountHolderName = data.accountHolderName;
             document.getElementById('dashBalance').textContent = formatCurrency(data.balance);
-            sessionStorage.setItem('apex_user', JSON.stringify(currentUser));
+            sessionStorage.setItem('bank_user', JSON.stringify(currentUser));
         }
     } catch (e) {}
+}
+
+async function refreshStatement() {
+    if (!currentUser) return;
+    const tbody = document.getElementById('statementTableBody');
+    try {
+        const res = await fetch(`${API_BASE}/accounts/${currentUser.accountNumber}/statement`);
+        const data = await res.json();
+        if (res.ok && data.success && data.transactions) {
+            tbody.innerHTML = '';
+            if (data.transactions.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No transactions recorded yet.</td></tr>`;
+                return;
+            }
+
+            // Loop in reverse (newest first)
+            for (let i = data.transactions.length - 1; i >= 0; i--) {
+                const item = data.transactions[i]; // e.g. "2026-09-21 10:50:00 - Deposit: $100.0"
+                const parts = item.split(' - ');
+                const timestamp = parts[0] || '';
+                const desc = parts.slice(1).join(' - ') || item;
+
+                let badgeHtml = '<span class="badge badge-neutral">System</span>';
+                if (desc.toLowerCase().includes('deposit') || desc.toLowerCase().includes('initial deposit') || desc.toLowerCase().includes('transfer from')) {
+                    badgeHtml = '<span class="badge badge-credit">+ Credit</span>';
+                } else if (desc.toLowerCase().includes('withdraw') || desc.toLowerCase().includes('transfer to')) {
+                    badgeHtml = '<span class="badge badge-debit">- Debit</span>';
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="font-mono">${timestamp}</td>
+                    <td>${desc}</td>
+                    <td>${badgeHtml}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">Unable to load statement ledger.</td></tr>`;
+    }
 }
 
 async function handleDeposit(e) {
@@ -202,7 +245,8 @@ async function handleDeposit(e) {
         if (res.ok && data.success) {
             showToast(data.message, 'success');
             document.getElementById('depositForm').reset();
-            refreshAccountDetails();
+            await refreshAccountDetails();
+            await refreshStatement();
         } else {
             showToast(data.error || 'Deposit failed', 'error');
         }
@@ -231,7 +275,8 @@ async function handleWithdraw(e) {
         if (res.ok && data.success) {
             showToast(data.message, 'success');
             document.getElementById('withdrawForm').reset();
-            refreshAccountDetails();
+            await refreshAccountDetails();
+            await refreshStatement();
         } else {
             showToast(data.error || 'Withdrawal failed', 'error');
         }
@@ -262,7 +307,8 @@ async function handleTransfer(e) {
         if (res.ok && data.success) {
             showToast(data.message, 'success');
             document.getElementById('transferForm').reset();
-            refreshAccountDetails();
+            await refreshAccountDetails();
+            await refreshStatement();
         } else {
             showToast(data.error || 'Transfer failed', 'error');
         }

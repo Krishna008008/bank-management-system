@@ -84,7 +84,7 @@ public class BankServer {
         BankServer bankServer = new BankServer();
         bankServer.start(DEFAULT_PORT, bankService);
         System.out.println("==================================================");
-        System.out.println(" Apex Bank Management System Web Portal is LIVE!");
+        System.out.println(" Bank Management System Web Portal is LIVE!");
         System.out.println(" Open in browser: http://localhost:8080/");
         System.out.println(" REST API Base:   http://localhost:8080/api");
         System.out.println(" Press Ctrl+C in terminal to stop server.");

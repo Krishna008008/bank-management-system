@@ -42,6 +42,10 @@ public abstract class Account {
         this.transactionHistory = new ArrayList<>(history);
     }
 
+    public List<String> getTransactionHistory() {
+        return new ArrayList<>(this.transactionHistory);
+    }
+
     // Getters and Setters (Encapsulation)
     public String getAccountNumber() {
         return accountNumber;
