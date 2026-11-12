@@ -41,6 +41,7 @@ public class DatabaseManager {
 
     /**
      * Initializes the database schema if tables do not already exist.
+     * Uses TEXT / NUMERIC for monetary columns to prevent IEEE 754 floating-point rounding errors.
      */
     public static void initializeDatabase() {
         String createAccountsTable = """
@@ -50,7 +51,7 @@ public class DatabaseManager {
                 last_name TEXT NOT NULL,
                 phone_number TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
-                balance REAL NOT NULL,
+                balance TEXT NOT NULL,
                 account_type TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -61,8 +62,8 @@ public class DatabaseManager {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 account_number TEXT NOT NULL,
                 transaction_type TEXT NOT NULL,
-                amount REAL NOT NULL,
-                balance_after REAL NOT NULL,
+                amount TEXT NOT NULL,
+                balance_after TEXT NOT NULL,
                 timestamp TEXT NOT NULL,
                 description TEXT,
                 FOREIGN KEY (account_number) REFERENCES accounts(account_number)

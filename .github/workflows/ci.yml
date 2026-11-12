@@ -31,5 +31,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: bank-management-jar
-        path: target/bank-management-*-jar-with-dependencies.jar
+        path: target/bank-management-*.jar
         retention-days: 7

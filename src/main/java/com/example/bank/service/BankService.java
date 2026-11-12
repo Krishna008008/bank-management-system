@@ -8,20 +8,32 @@ import com.example.bank.model.CurrentAccount;
 import com.example.bank.model.SavingsAccount;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 /**
  * BankService coordinates banking business logic with Log4j2 audit logging.
+ * Uses exact BigDecimal amounts for financial operations.
  */
+@Service
 public class BankService {
     private static final Logger logger = LogManager.getLogger(BankService.class);
     private final AccountDao accountDao;
 
+    @Autowired
+    public BankService(AccountDao accountDao) {
+        this.accountDao = accountDao;
+    }
+
     public BankService() {
-        this.accountDao = new AccountDao();
+        this(new AccountDao());
     }
 
     public Account createAccount(String accountNumber, String firstName, String lastName,
-                                 String phoneNumber, String password, double initialBalance, String accountType) {
+                                 String phoneNumber, String password, BigDecimal initialBalance, String accountType) {
 
         try {
             accountDao.findByAccountNumber(accountNumber);
@@ -37,20 +49,25 @@ public class BankService {
         } catch (AccountNotFoundException ignored) {
         }
 
+        if (initialBalance == null) {
+            throw new IllegalArgumentException("Initial balance cannot be null.");
+        }
+
+        BigDecimal standardizedBalance = initialBalance.setScale(2, RoundingMode.HALF_EVEN);
         Account account;
         if (accountType.equalsIgnoreCase("Savings")) {
-            if (initialBalance < SavingsAccount.MINIMUM_BALANCE) {
+            if (standardizedBalance.compareTo(SavingsAccount.MINIMUM_BALANCE) < 0) {
                 logger.warn("Savings creation rejected: Initial deposit ${} is below min ${}",
-                        initialBalance, SavingsAccount.MINIMUM_BALANCE);
-                throw new IllegalArgumentException("Savings account requires a minimum initial balance of $" + SavingsAccount.MINIMUM_BALANCE + ".");
+                        standardizedBalance.toPlainString(), SavingsAccount.MINIMUM_BALANCE.toPlainString());
+                throw new IllegalArgumentException("Savings account requires a minimum initial balance of $" + SavingsAccount.MINIMUM_BALANCE.toPlainString() + ".");
             }
-            account = new SavingsAccount(accountNumber, firstName, lastName, phoneNumber, password, initialBalance);
+            account = new SavingsAccount(accountNumber, firstName, lastName, phoneNumber, password, standardizedBalance);
         } else if (accountType.equalsIgnoreCase("Current")) {
-            if (initialBalance < 0.0) {
-                logger.warn("Current account creation rejected: Negative balance ${}", initialBalance);
+            if (standardizedBalance.compareTo(BigDecimal.ZERO) < 0) {
+                logger.warn("Current account creation rejected: Negative balance ${}", standardizedBalance.toPlainString());
                 throw new IllegalArgumentException("Initial balance cannot be negative.");
             }
-            account = new CurrentAccount(accountNumber, firstName, lastName, phoneNumber, password, initialBalance);
+            account = new CurrentAccount(accountNumber, firstName, lastName, phoneNumber, password, standardizedBalance);
         } else {
             logger.warn("Account creation rejected: Invalid type '{}'", accountType);
             throw new IllegalArgumentException("Invalid account type. Use 'Savings' or 'Current'.");
@@ -58,6 +75,11 @@ public class BankService {
 
         accountDao.saveAccount(account, accountType);
         return account;
+    }
+
+    public Account createAccount(String accountNumber, String firstName, String lastName,
+                                 String phoneNumber, String password, double initialBalance, String accountType) {
+        return createAccount(accountNumber, firstName, lastName, phoneNumber, password, BigDecimal.valueOf(initialBalance), accountType);
     }
 
     public Account getAccountByPhoneNumber(String phoneNumber) throws AccountNotFoundException {
@@ -68,12 +90,20 @@ public class BankService {
         return accountDao.findByAccountNumber(accountNumber);
     }
 
-    public void deposit(String accountNumber, double amount) throws AccountNotFoundException {
+    public void deposit(String accountNumber, BigDecimal amount) throws AccountNotFoundException {
         accountDao.deposit(accountNumber, amount);
     }
 
-    public void withdraw(String accountNumber, double amount) throws AccountNotFoundException, InsufficientFundsException {
+    public void deposit(String accountNumber, double amount) throws AccountNotFoundException {
+        deposit(accountNumber, BigDecimal.valueOf(amount));
+    }
+
+    public void withdraw(String accountNumber, BigDecimal amount) throws AccountNotFoundException, InsufficientFundsException {
         accountDao.withdraw(accountNumber, amount);
+    }
+
+    public void withdraw(String accountNumber, double amount) throws AccountNotFoundException, InsufficientFundsException {
+        withdraw(accountNumber, BigDecimal.valueOf(amount));
     }
 
     public void displayAccountDetails(String accountNumber) throws AccountNotFoundException {
@@ -81,8 +111,13 @@ public class BankService {
         account.displayAccountDetails();
     }
 
-    public void transfer(String sourceAccountNumber, String destinationAccountNumber, double amount)
+    public void transfer(String sourceAccountNumber, String destinationAccountNumber, BigDecimal amount)
             throws AccountNotFoundException, InsufficientFundsException {
         accountDao.transfer(sourceAccountNumber, destinationAccountNumber, amount);
+    }
+
+    public void transfer(String sourceAccountNumber, String destinationAccountNumber, double amount)
+            throws AccountNotFoundException, InsufficientFundsException {
+        transfer(sourceAccountNumber, destinationAccountNumber, BigDecimal.valueOf(amount));
     }
 }

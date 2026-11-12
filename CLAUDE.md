@@ -1,73 +1,85 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) and AI coding assistants when working with code in this repository.
 
-## Common Commands
+## Build and Test Commands
 
-**Build the project:**
-```bash
-javac Main.java
+* **Run all automated tests:**
+  ```bash
+  mvn test
+  ```
+* **Run a single test class:**
+  ```bash
+  mvn test -Dtest=BankServiceTest
+  mvn test -Dtest=AccountDaoTest
+  mvn test -Dtest=BankApiTest
+  ```
+* **Run Spring Boot application locally:**
+  ```bash
+  mvn spring-boot:run
+  ```
+* **Clean and package executable Spring Boot JAR:**
+  ```bash
+  mvn clean package
+  ```
+* **Run the packaged JAR:**
+  ```bash
+  java -jar target/bank-management-1.0.0.jar
+  # On Java 22+ (suppresses native library warning for SQLite):
+  java --enable-native-access=ALL-UNNAMED -jar target/bank-management-1.0.0.jar
+  ```
+* **Run the interactive console application:**
+  ```bash
+  java -cp target/bank-management-1.0.0.jar com.example.bank.Main
+  ```
+* **Run via Docker Compose:**
+  ```bash
+  docker compose up --build -d
+  docker compose down
+  ```
+
+---
+
+## Code Architecture and Package Structure
+
 ```
-This compiles all Java source files in the current directory.
-
-**Run the application:**
-```bash
-java Main
+com.example.bank
+├── BankApplication.java # Spring Boot entry point (@SpringBootApplication)
+├── api/                 # Spring MVC REST Controller (@RestController)
+├── config/              # WebMvcConfig (static resource handlers)
+├── dao/                 # Persistence layer (@Repository, DatabaseManager)
+├── exception/           # Domain-specific checked exceptions
+├── model/               # Core domain entities (Account, SavingsAccount, CurrentAccount)
+├── service/             # Business orchestration & validation (@Service)
+└── Main.java            # Optional interactive CLI terminal
 ```
-Starts the Bank Management System console application.
 
-**Run specific test classes:**
-```bash
-# Compile and run a test (e.g., TestNameValidation)
-javac TestNameValidation.java
-java TestNameValidation
-```
-Replace `TestNameValidation` with other test class names (e.g., `TestWithdraw`, `TestMenuWithdraw`, `TestMain`, `TestWithdrawFinal`) as needed.
+### Key Architectural Guidelines
 
-**Clean compiled files:**
-```bash
-del *.class
-```
-Removes all compiled class files.
+1. **Spring Boot Framework**:
+   - Backend is powered by Spring Boot 3 (`spring-boot-starter-web`, `spring-boot-starter-log4j2`, `spring-boot-starter-test`).
+   - Use `@RestController`, `@Service`, and `@Repository` for dependency injection.
+   - Web assets are served directly from `src/main/resources/static/`.
 
-## Code Architecture and Structure
+2. **Monetary Precision (`BigDecimal`)**:
+   - Never use `float` or `double` for currency balances or transaction amounts.
+   - All financial amounts must be represented using `java.math.BigDecimal` with scale 2 and `RoundingMode.HALF_EVEN`.
+   - In SQLite, balance and amount fields are stored as `TEXT` to prevent IEEE 754 floating-point coercion.
 
-### High-Level Overview
-The Bank Management System is a console-based Java application with a layered structure:
-- **Presentation Layer**: `Main.java` handles user input/output via console.
-- **Service Layer**: `BankService.java` (in `service` package) manages account operations and business logic.
-- **Model Layer**: Account classes (`Account.java`, `SavingsAccount.java`, `CurrentAccount.java` in `model` package) represent bank accounts.
-- **Exception Layer**: Custom exceptions (`InsufficientFundsException.java`, `AccountNotFoundException.java` in `exception` package) handle error conditions.
+3. **Persistence and ACID Transactions**:
+   - Database operations run against SQLite via `DatabaseManager`.
+   - Transfers and balance updates use explicit manual transaction boundaries:
+     ```java
+     conn.setAutoCommit(false);
+     // ... execute statements ...
+     conn.commit();
+     // on error:
+     conn.rollback();
+     ```
 
-### Key Components
+4. **Security**:
+   - PINs are hashed using `jBCrypt` with salt generation (`BCrypt.hashpw`, `BCrypt.checkpw`). Never log or persist plaintext PINs.
 
-1. **Main.java**: 
-   - Entry point with a menu-driven interface.
-   - Maps user choices to banking operations (create account, deposit, withdraw, etc.).
-   - Uses `Scanner` for console input and `BankService` for processing.
-
-2. **BankService.java**:
-   - Central service managing accounts in a `HashMap` (account number → Account object).
-   - Provides methods for account creation, deposits, withdrawals, transfers, balance inquiries, and mini-statements.
-   - Delegates actual operations to `Account` objects.
-
-3. **Account Hierarchy**:
-   - Abstract `Account.java`: Defines common account properties (number, holder name, balance) and operations (deposit, withdraw, display details, mini-statement).
-   - `SavingsAccount.java` and `CurrentAccount.java`: Extend `Account` with account-type-specific behavior (currently identical but designed for future differentiation).
-
-4. **Exceptions**:
-   - `AccountNotFoundException`: Thrown when an account number doesn't exist.
-   - `InsufficientFundsException`: Thrown when withdrawal/transfer exceeds available balance.
-
-### Data Flow
-1. User selects an option in `Main.java`.
-2. `Main` collects required parameters (account numbers, amounts, etc.) via console.
-3. `Main` invokes the corresponding method in `BankService`.
-4. `BankService` validates the account(s) exist and performs the operation (or throws exceptions).
-5. For balance inquiries and mini-statements, `BankService` retrieves the `Account` object and calls its display methods.
-6. Results or error messages are displayed to the user via `Main.java`.
-
-### Design Notes
-- The system uses polymorphism: `BankService` works with the abstract `Account` type, allowing different account implementations.
-- Extensibility: New account types can be added by extending `Account` without modifying `BankService` (Open/Closed Principle).
-- Error handling: Business logic exceptions are caught in `Main.java` and displayed to the user.
+5. **Testing Conventions**:
+   - Controller integration tests use `@SpringBootTest` and `MockMvc`.
+   - Tests dynamically isolate database state using separate SQLite test files (e.g. `test_bank.db`).

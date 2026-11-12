@@ -5,6 +5,8 @@ import com.example.bank.model.Account;
 import com.example.bank.model.SavingsAccount;
 import com.example.bank.exception.AccountNotFoundException;
 import com.example.bank.exception.InsufficientFundsException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Random;
 import java.util.Scanner;
 import org.apache.logging.log4j.LogManager;
@@ -207,20 +209,20 @@ public class Main {
 
         // Initial Balance
         while (true) {
-            double minBalance = accountType.equalsIgnoreCase("Savings") ? SavingsAccount.MINIMUM_BALANCE : 0.0;
-            System.out.printf("Enter initial deposit amount (Minimum: $%.2f): ", minBalance);
+            BigDecimal minBalance = accountType.equalsIgnoreCase("Savings") ? SavingsAccount.MINIMUM_BALANCE : BigDecimal.ZERO;
+            System.out.printf("Enter initial deposit amount (Minimum: $%.2f): ", minBalance.doubleValue());
             String balanceStr = scanner.nextLine().trim();
             if (balanceStr.equalsIgnoreCase("exit")) return;
 
             try {
-                double initialBalance = Double.parseDouble(balanceStr);
+                BigDecimal initialBalance = new BigDecimal(balanceStr);
                 // Validate deposit amount
-                if (initialBalance <= 0) {
+                if (initialBalance.compareTo(BigDecimal.ZERO) <= 0) {
                     System.out.println("Error: Initial deposit must be greater than zero.");
                     continue;
                 }
-                if (initialBalance < minBalance) {
-                    System.out.println("Error: Initial deposit must be at least $" + minBalance + " for Savings accounts.");
+                if (initialBalance.compareTo(minBalance) < 0) {
+                    System.out.println("Error: Initial deposit must be at least $" + minBalance.toPlainString() + " for Savings accounts.");
                     continue;
                 }
                 String accountNumber = "AC" + phoneNumber;
@@ -370,8 +372,8 @@ public class Main {
             if (amountStr.equalsIgnoreCase("exit")) return;
 
             try {
-                double amount = Double.parseDouble(amountStr);
-                if (amount <= 0) {
+                BigDecimal amount = new BigDecimal(amountStr);
+                if (amount.compareTo(BigDecimal.ZERO) <= 0) {
                     System.out.println("Error: Deposit amount must be greater than zero.");
                     continue;
                 }
@@ -400,8 +402,8 @@ public class Main {
             if (amountStr.equalsIgnoreCase("exit")) return;
 
             try {
-                double amount = Double.parseDouble(amountStr);
-                if (amount <= 0) {
+                BigDecimal amount = new BigDecimal(amountStr);
+                if (amount.compareTo(BigDecimal.ZERO) <= 0) {
                     System.out.println("Error: Withdrawal amount must be greater than zero.");
                     continue;
                 }
@@ -451,8 +453,8 @@ public class Main {
             if (amountStr.equalsIgnoreCase("exit")) return;
 
             try {
-                double amount = Double.parseDouble(amountStr);
-                if (amount <= 0) {
+                BigDecimal amount = new BigDecimal(amountStr);
+                if (amount.compareTo(BigDecimal.ZERO) <= 0) {
                     System.out.println("Error: Transfer amount must be greater than zero.");
                     continue;
                 }

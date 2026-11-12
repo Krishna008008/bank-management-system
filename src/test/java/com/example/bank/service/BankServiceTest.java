@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -28,58 +29,58 @@ public class BankServiceTest {
 
     @Test
     void testCreateSavingsAccountSuccess() {
-        Account account = bankService.createAccount("AC1112223334", "Charlie", "Brown", "1112223334", "pw123", 500.0, "Savings");
+        Account account = bankService.createAccount("AC1112223334", "Charlie", "Brown", "1112223334", "pw123", new BigDecimal("500.00"), "Savings");
         assertNotNull(account);
         assertEquals("AC1112223334", account.getAccountNumber());
-        assertEquals(500.0, account.getBalance());
+        assertEquals(new BigDecimal("500.00"), account.getBalance());
     }
 
     @Test
     void testCreateSavingsAccountBelowMinimumThrowsException() {
         assertThrows(IllegalArgumentException.class, () ->
-            bankService.createAccount("AC1112223335", "Charlie", "Brown", "1112223335", "pw123", 50.0, "Savings")
+            bankService.createAccount("AC1112223335", "Charlie", "Brown", "1112223335", "pw123", new BigDecimal("50.00"), "Savings")
         );
     }
 
     @Test
     void testDuplicateAccountNumberThrowsException() {
-        bankService.createAccount("AC1112223336", "Dan", "Green", "1112223336", "pw123", 200.0, "Savings");
+        bankService.createAccount("AC1112223336", "Dan", "Green", "1112223336", "pw123", new BigDecimal("200.00"), "Savings");
         assertThrows(IllegalArgumentException.class, () ->
-            bankService.createAccount("AC1112223336", "Dan", "Green", "1112223337", "pw123", 200.0, "Savings")
+            bankService.createAccount("AC1112223336", "Dan", "Green", "1112223337", "pw123", new BigDecimal("200.00"), "Savings")
         );
     }
 
     @Test
     void testDuplicatePhoneNumberThrowsException() {
-        bankService.createAccount("AC1112223338", "Eva", "Long", "1112223338", "pw123", 200.0, "Savings");
+        bankService.createAccount("AC1112223338", "Eva", "Long", "1112223338", "pw123", new BigDecimal("200.00"), "Savings");
         assertThrows(IllegalArgumentException.class, () ->
-            bankService.createAccount("AC1112223339", "Eva", "Long", "1112223338", "pw123", 200.0, "Savings")
+            bankService.createAccount("AC1112223339", "Eva", "Long", "1112223338", "pw123", new BigDecimal("200.00"), "Savings")
         );
     }
 
     @Test
     void testDepositAndWithdraw() throws AccountNotFoundException, InsufficientFundsException {
-        bankService.createAccount("AC2223334445", "Frank", "Wright", "2223334445", "pw123", 300.0, "Current");
-        bankService.deposit("AC2223334445", 200.0);
+        bankService.createAccount("AC2223334445", "Frank", "Wright", "2223334445", "pw123", new BigDecimal("300.00"), "Current");
+        bankService.deposit("AC2223334445", new BigDecimal("200.00"));
         Account acc = bankService.getAccount("AC2223334445");
-        assertEquals(500.0, acc.getBalance());
+        assertEquals(new BigDecimal("500.00"), acc.getBalance());
 
-        bankService.withdraw("AC2223334445", 150.0);
+        bankService.withdraw("AC2223334445", new BigDecimal("150.00"));
         acc = bankService.getAccount("AC2223334445");
-        assertEquals(350.0, acc.getBalance());
+        assertEquals(new BigDecimal("350.00"), acc.getBalance());
     }
 
     @Test
     void testAtomicTransfer() throws AccountNotFoundException, InsufficientFundsException {
-        bankService.createAccount("AC3334445556", "Grace", "Hopper", "3334445556", "pw123", 500.0, "Savings");
-        bankService.createAccount("AC4445556667", "Alan", "Turing", "4445556667", "pw123", 200.0, "Current");
+        bankService.createAccount("AC3334445556", "Grace", "Hopper", "3334445556", "pw123", new BigDecimal("500.00"), "Savings");
+        bankService.createAccount("AC4445556667", "Alan", "Turing", "4445556667", "pw123", new BigDecimal("200.00"), "Current");
 
-        bankService.transfer("AC3334445556", "AC4445556667", 100.0);
+        bankService.transfer("AC3334445556", "AC4445556667", new BigDecimal("100.00"));
 
         Account src = bankService.getAccount("AC3334445556");
         Account dest = bankService.getAccount("AC4445556667");
 
-        assertEquals(400.0, src.getBalance());
-        assertEquals(300.0, dest.getBalance());
+        assertEquals(new BigDecimal("400.00"), src.getBalance());
+        assertEquals(new BigDecimal("300.00"), dest.getBalance());
     }
 }

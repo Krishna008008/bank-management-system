@@ -1,6 +1,8 @@
 package com.example.bank.model;
 
 import com.example.bank.exception.InsufficientFundsException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -9,12 +11,13 @@ import java.util.List;
 /**
  * Abstract class representing a bank account.
  * This demonstrates the OOP concept of Abstraction.
+ * Monetary balances are stored as BigDecimal to avoid binary floating-point rounding errors.
  */
 public abstract class Account {
     // Encapsulation: private fields
     private String accountNumber;
     private String accountHolderName;
-    private double balance;
+    private BigDecimal balance;
     private String firstName;
     private String lastName;
     private String phoneNumber;
@@ -26,16 +29,21 @@ public abstract class Account {
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    // Constructor
-    public Account(String accountNumber, String firstName, String lastName, String phoneNumber, String password, double initialBalance) {
+    // Canonical Constructor with BigDecimal
+    public Account(String accountNumber, String firstName, String lastName, String phoneNumber, String password, BigDecimal initialBalance) {
         this.accountNumber = accountNumber;
         this.firstName = firstName;
         this.lastName = lastName;
         this.phoneNumber = phoneNumber;
         this.password = password;
         this.accountHolderName = firstName + " " + lastName;
-        this.balance = initialBalance;
+        this.balance = initialBalance != null ? initialBalance.setScale(2, RoundingMode.HALF_EVEN) : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_EVEN);
         this.transactionHistory = new ArrayList<>();
+    }
+
+    // Overloaded Constructor for double
+    public Account(String accountNumber, String firstName, String lastName, String phoneNumber, String password, double initialBalance) {
+        this(accountNumber, firstName, lastName, phoneNumber, password, BigDecimal.valueOf(initialBalance));
     }
 
     public void setTransactionHistory(List<String> history) {
@@ -63,12 +71,12 @@ public abstract class Account {
         this.accountHolderName = accountHolderName;
     }
 
-    public double getBalance() {
+    public BigDecimal getBalance() {
         return balance;
     }
 
-    protected void setBalance(double balance) {
-        this.balance = balance;
+    protected void setBalance(BigDecimal balance) {
+        this.balance = balance != null ? balance.setScale(2, RoundingMode.HALF_EVEN) : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_EVEN);
     }
 
     public String getFirstName() {
@@ -108,19 +116,28 @@ public abstract class Account {
      * This will be implemented by subclasses (Polymorphism).
      * @throws InsufficientFundsException if there are insufficient funds for the withdrawal
      */
-    public abstract void withdraw(double amount) throws InsufficientFundsException;
+    public abstract void withdraw(BigDecimal amount) throws InsufficientFundsException;
+
+    public void withdraw(double amount) throws InsufficientFundsException {
+        withdraw(BigDecimal.valueOf(amount));
+    }
 
     /**
      * Method for depositing money.
      */
-    public void deposit(double amount) {
-        if (amount > 0) {
-            balance += amount;
-            System.out.println("Deposited: $" + amount);
-            addTransaction("Deposit: $" + amount);
+    public void deposit(BigDecimal amount) {
+        if (amount != null && amount.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal standardized = amount.setScale(2, RoundingMode.HALF_EVEN);
+            balance = balance.add(standardized);
+            System.out.println("Deposited: $" + standardized.toPlainString());
+            addTransaction("Deposit: $" + standardized.toPlainString());
         } else {
             System.out.println("Deposit amount must be positive.");
         }
+    }
+
+    public void deposit(double amount) {
+        deposit(BigDecimal.valueOf(amount));
     }
 
     /**
@@ -129,7 +146,7 @@ public abstract class Account {
     public void displayAccountDetails() {
         System.out.println("Account Number: " + accountNumber);
         System.out.println("Account Holder: " + accountHolderName);
-        System.out.println("Balance: $" + balance);
+        System.out.println("Balance: $" + balance.toPlainString());
     }
 
     /**
@@ -138,7 +155,7 @@ public abstract class Account {
     public void printMiniStatement() {
         System.out.println("=== Mini Statement for Account: " + accountNumber + " ===");
         System.out.println("Account Holder: " + accountHolderName);
-        System.out.println("Current Balance: $" + balance);
+        System.out.println("Current Balance: $" + balance.toPlainString());
         System.out.println("Last " + Math.min(transactionHistory.size(), MAX_TRANSACTIONS) + " transactions:");
 
         if (transactionHistory.isEmpty()) {
